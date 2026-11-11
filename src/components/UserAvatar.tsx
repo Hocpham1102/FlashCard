@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 interface UserAvatarProps {
@@ -23,12 +24,15 @@ export function UserAvatar({ user, className = "", fallbackClassName = "" }: Use
   // Thêm referrerPolicy="no-referrer" để fix lỗi 403 của ảnh Google
   if (user.image && !error) {
     return (
-      <img
+      <Image
         src={user.image}
         alt="Avatar"
+        width={96}
+        height={96}
         className={`${className} object-cover`}
         onError={() => setError(true)}
         referrerPolicy="no-referrer"
+        unoptimized
       />
     );
   }

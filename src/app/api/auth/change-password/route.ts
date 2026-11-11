@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
       select: { password: true }
     });
     return NextResponse.json({ hasPassword: !!dbUser?.password }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ hasPassword: false }, { status: 500 });
   }
 }
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ message: "Đổi mật khẩu thành công" }, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Change password error:", error);
     return NextResponse.json({ message: "Có lỗi xảy ra trong quá trình xử lý" }, { status: 500 });
   }

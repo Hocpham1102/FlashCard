@@ -30,9 +30,16 @@ export default function RootLayout({
           <NavBar>
             <Link
               href="/"
-              className="text-xl font-bold tracking-tight hover:text-indigo-100 transition-colors"
+              className="flex items-center gap-2.5 text-xl font-black tracking-tight text-slate-900 group"
             >
-              FlashCard
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <span className="tracking-tight">
+                FlashCard<span className="text-indigo-600">.</span>
+              </span>
             </Link>
             <NavMenu />
             <div className="flex items-center gap-2 sm:gap-4">

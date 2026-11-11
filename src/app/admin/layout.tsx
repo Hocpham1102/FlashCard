@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const sidebarItems = [
   {
@@ -39,7 +38,6 @@ const sidebarItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Don't apply admin layout to login page

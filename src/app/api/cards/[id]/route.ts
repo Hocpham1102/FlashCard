@@ -1,4 +1,6 @@
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(
@@ -6,7 +8,26 @@ export async function PUT(
   { params }: { params: { id: string } },
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
+
+    const existingCard = await prisma.card.findUnique({
+      where: { id },
+      include: { deck: true },
+    });
+
+    if (!existingCard) {
+      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+    }
+
+    if (existingCard.deck?.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { front, back, phonetic, example, partOfSpeech, synonyms, antonyms, collocations, toeicPart, difficulty } = body;
 
@@ -41,12 +62,24 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
 
-    const card = await prisma.card.findUnique({ where: { id } });
+    const card = await prisma.card.findUnique({
+      where: { id },
+      include: { deck: true },
+    });
 
     if (!card) {
       return NextResponse.json({ error: "Card not found" }, { status: 404 });
+    }
+
+    if (card.deck?.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.$transaction([

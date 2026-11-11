@@ -1,24 +1,24 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
+  });
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
 
-if (!globalForPrisma.prisma) {
-  prisma
-    .$connect()
-    .then(() => {
-      console.log("✅ Successfully connected to Supabase database");
-    })
-    .catch((error: unknown) => {
-      console.error("❌ Failed to connect to Supabase database:", error);
-    });
-}
+const globalForPrisma = globalThis as unknown as {
+  prismaGlobal: PrismaClientSingleton | undefined;
+};
+
+export const prisma = globalForPrisma.prismaGlobal ?? prismaClientSingleton();
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaGlobal = prisma;
 }
 
 export default prisma;

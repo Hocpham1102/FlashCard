@@ -24,8 +24,8 @@ export function SoundToggle() {
   return (
     <button
       onClick={toggleSound}
-      className="p-2 rounded-full hover:bg-white/10 text-indigo-100 hover:text-white transition-colors"
-      title={enabled ? "Tắt âm thanh" : "Bật âm thanh"}
+      className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 transition-all border border-transparent hover:border-slate-200/60"
+      title={enabled ? "Tắt hiệu ứng âm thanh" : "Bật hiệu ứng âm thanh"}
     >
       {enabled ? (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

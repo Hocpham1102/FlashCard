@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
       switch (type) {
         case "multiple_choice": {
-          let options: { text: string; isCorrect: boolean }[] = [];
+          let options: { text: string }[] = [];
 
           if (card.synonyms) {
             try {
@@ -65,17 +65,16 @@ export async function POST(request: NextRequest) {
               if (Array.isArray(parsedOptions) && parsedOptions.length >= 2) {
                 options = parsedOptions.map((opt: string) => ({
                   text: opt,
-                  isCorrect: opt === card.back,
                 }));
                 
                 // Ensure at least one correct option exists
-                if (!options.some((o) => o.isCorrect)) {
-                  options[0] = { text: card.back, isCorrect: true };
+                if (!options.some((o) => o.text === card.back)) {
+                  options[0] = { text: card.back };
                 }
                 
                 options = options.sort(() => Math.random() - 0.5);
               }
-            } catch (e) {
+            } catch {
               // Ignore parse error, fallback to default behavior
             }
           }
@@ -83,8 +82,8 @@ export async function POST(request: NextRequest) {
           if (options.length === 0) {
             // Show English word -> pick correct Vietnamese meaning (or fallback for MCQs)
             options = [
-              { text: card.back, isCorrect: true },
-              ...wrongOptions.map((w) => ({ text: w.back, isCorrect: false })),
+              { text: card.back },
+              ...wrongOptions.map((w) => ({ text: w.back })),
             ].sort(() => Math.random() - 0.5);
           }
 
@@ -94,15 +93,14 @@ export async function POST(request: NextRequest) {
             phonetic: card.phonetic || "",
             type: "multiple_choice",
             options,
-            correctAnswer: card.back,
           };
         }
 
         case "meaning_match": {
           // Show Vietnamese meaning -> pick correct English word
           const options = [
-            { text: card.front, isCorrect: true },
-            ...wrongOptions.map((w) => ({ text: w.front, isCorrect: false })),
+            { text: card.front },
+            ...wrongOptions.map((w) => ({ text: w.front })),
           ].sort(() => Math.random() - 0.5);
 
           return {
@@ -110,7 +108,6 @@ export async function POST(request: NextRequest) {
             question: card.back,
             type: "meaning_match",
             options,
-            correctAnswer: card.front,
           };
         }
 
@@ -132,15 +129,14 @@ export async function POST(request: NextRequest) {
             question: sentence || `Điền từ tiếng Anh có nghĩa: "${card.back}"`,
             hint: card.phonetic || "",
             type: "fill_blank",
-            correctAnswer: card.front,
           };
         }
 
         case "listening": {
           // Listen to word -> pick correct meaning (same as MC but with audio hint)
           const options = [
-            { text: card.back, isCorrect: true },
-            ...wrongOptions.map((w) => ({ text: w.back, isCorrect: false })),
+            { text: card.back },
+            ...wrongOptions.map((w) => ({ text: w.back })),
           ].sort(() => Math.random() - 0.5);
 
           return {
@@ -148,7 +144,6 @@ export async function POST(request: NextRequest) {
             question: card.front, // Will be spoken via TTS
             type: "listening",
             options,
-            correctAnswer: card.back,
           };
         }
 

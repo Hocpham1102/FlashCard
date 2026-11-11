@@ -39,8 +39,20 @@ interface AnalyticsData {
   recentDecks: { id: string; title: string; cardCount: number }[];
 }
 
+interface TooltipPayloadItem {
+  name?: string;
+  value?: string | number;
+  color?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string;
+}
+
 export function DashboardStats() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,12 +95,12 @@ export function DashboardStats() {
         )
       : 0;
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border border-slate-200 shadow-lg rounded-xl">
           <p className="font-bold text-slate-700 mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry: TooltipPayloadItem, index: number) => (
             <p
               key={index}
               className="text-sm font-medium flex items-center gap-2"

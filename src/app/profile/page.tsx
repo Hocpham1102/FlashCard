@@ -86,8 +86,8 @@ export default function ProfilePage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      setPasswordError(err.message);
+    } catch (err: unknown) {
+      setPasswordError(err instanceof Error ? err.message : "Có lỗi xảy ra");
     } finally {
       setIsChangingPassword(false);
     }

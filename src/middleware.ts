@@ -13,7 +13,9 @@ export async function middleware(req: NextRequest) {
   const isProtectedPage =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/decks") ||
+    pathname.startsWith("/profile") ||
     pathname.startsWith("/api/decks") ||
+    pathname.startsWith("/api/cards") ||
     pathname.startsWith("/api/admin");
   const isAdminPage = pathname.startsWith("/admin") && !isAdminLoginPage;
 
@@ -66,7 +68,10 @@ export const config = {
     "/dashboard/:path*",
     "/admin/:path*",
     "/decks/:path*",
+    "/profile",
+    "/profile/:path*",
     "/api/decks/:path*",
+    "/api/cards/:path*",
     "/api/admin/:path*",
   ],
 };

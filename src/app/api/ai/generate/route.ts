@@ -23,12 +23,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Vui lòng nhập chủ đề" }, { status: 400 });
     }
 
+    const count = Math.max(1, Math.min(Number(cardCount) || 10, 50));
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `Bạn là một chuyên gia giáo dục và TOEIC. Hãy tạo một bộ flashcard học tập chất lượng cao về chủ đề: "${topic}".
 
 Yêu cầu:
-- Tạo đúng ${cardCount} thẻ flashcard
+- Tạo đúng ${count} thẻ flashcard
 - Mỗi thẻ phải có đầy đủ thông tin ngôn ngữ
 - front: từ vựng hoặc cụm từ tiếng Anh
 - back: nghĩa tiếng Việt (ngắn gọn, dễ hiểu)
@@ -136,9 +138,21 @@ Trả về CHÍNH XÁC định dạng JSON sau (không có markdown, không có 
       },
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI generate error:", error);
-    if (error?.message?.includes("API_KEY_INVALID") || error?.message?.includes("API key")) {
+    const errorMessage = error instanceof Error ? error.message : "";
+    if (
+      errorMessage.includes("429") ||
+      errorMessage.includes("RESOURCE_EXHAUSTED") ||
+      errorMessage.includes("quota") ||
+      errorMessage.includes("rate limit")
+    ) {
+      return NextResponse.json(
+        { message: "Hệ thống AI đang quá tải hoặc hết hạn ngạch. Vui lòng thử lại sau.", error: "Rate limit exceeded" },
+        { status: 429 },
+      );
+    }
+    if (errorMessage.includes("API_KEY_INVALID") || errorMessage.includes("API key")) {
       return NextResponse.json({ message: "API Key không hợp lệ. Vui lòng kiểm tra lại GEMINI_API_KEY trong file .env" }, { status: 500 });
     }
     return NextResponse.json({ message: "Có lỗi xảy ra khi gọi AI. Vui lòng thử lại sau." }, { status: 500 });

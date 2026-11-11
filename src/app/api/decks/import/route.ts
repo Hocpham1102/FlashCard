@@ -12,6 +12,7 @@ interface ParsedCard {
   synonyms?: string;
   collocations?: string;
   toeicPart?: string;
+  [key: string]: string | undefined;
 }
 
 interface ParsedDeck {
@@ -115,7 +116,7 @@ function parseCSV(text: string, fileName: string): ParsedDeck {
     const card: ParsedCard = { front, back };
     fieldMap.forEach((field, idx) => {
       if (field && field !== "front" && field !== "back" && cols[idx]?.trim()) {
-        (card as any)[field] = cols[idx].trim();
+        card[field] = cols[idx].trim();
       }
     });
     cards.push(card);
@@ -159,8 +160,33 @@ function parseTXT(text: string, fileName: string): ParsedDeck {
 // Hỗ trợ 2 dạng:
 // 1. { title, description, cards: [{front, back, ...}] }
 // 2. [{front, back, ...}]  (array)
+interface RawCardItem {
+  front?: string;
+  term?: string;
+  word?: string;
+  back?: string;
+  definition?: string;
+  meaning?: string;
+  translation?: string;
+  phonetic?: string;
+  example?: string;
+  partOfSpeech?: string;
+  part_of_speech?: string;
+  synonyms?: string;
+  collocations?: string;
+  toeicPart?: string;
+  toeic_part?: string;
+}
+
+interface RawDeckData {
+  title?: string;
+  description?: string;
+  cards?: RawCardItem[];
+  flashcards?: RawCardItem[];
+}
+
 function parseJSON(text: string, fileName: string): ParsedDeck {
-  let data: any;
+  let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
@@ -169,16 +195,17 @@ function parseJSON(text: string, fileName: string): ParsedDeck {
 
   // Dạng mảng
   if (Array.isArray(data)) {
-    const cards = validateCards(data);
+    const cards = validateCards(data as RawCardItem[]);
     const title = fileName.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
     return { title, description: `Nhập từ file ${fileName}`, cards };
   }
 
   // Dạng object
   if (typeof data === "object" && data !== null) {
-    const title = (data.title as string) || fileName.replace(/\.[^.]+$/, "");
-    const description = (data.description as string) || "";
-    const rawCards = Array.isArray(data.cards) ? data.cards : Array.isArray(data.flashcards) ? data.flashcards : [];
+    const obj = data as RawDeckData;
+    const title = obj.title || fileName.replace(/\.[^.]+$/, "");
+    const description = obj.description || "";
+    const rawCards = Array.isArray(obj.cards) ? obj.cards : Array.isArray(obj.flashcards) ? obj.flashcards : [];
     const cards = validateCards(rawCards);
     return { title, description, cards };
   }
@@ -186,7 +213,7 @@ function parseJSON(text: string, fileName: string): ParsedDeck {
   throw new Error("Định dạng JSON không được hỗ trợ. Cần là object {title, cards:[]} hoặc mảng [{front,back}].");
 }
 
-function validateCards(rawCards: any[]): ParsedCard[] {
+function validateCards(rawCards: RawCardItem[]): ParsedCard[] {
   if (!rawCards.length) throw new Error("Không có thẻ nào trong file.");
   const cards: ParsedCard[] = [];
   for (const c of rawCards) {
@@ -292,10 +319,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Import deck error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra khi xử lý file.";
     return NextResponse.json(
-      { error: error?.message || "Có lỗi xảy ra khi xử lý file." },
+      { error: errorMessage },
       { status: 500 }
     );
   }

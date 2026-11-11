@@ -22,11 +22,15 @@ export function setSoundEnabled(enabled: boolean) {
   window.dispatchEvent(new Event("soundSettingsChanged"));
 }
 
+interface WindowWithWebkitAudio {
+  webkitAudioContext?: typeof AudioContext;
+}
+
 export function isSpeechSynthesisSupported(): boolean {
   return (
     hasWindow() &&
     "speechSynthesis" in window &&
-    typeof (window as any).SpeechSynthesisUtterance !== "undefined"
+    "SpeechSynthesisUtterance" in window
   );
 }
 
@@ -57,7 +61,8 @@ export function playFeedbackTone(kind: FeedbackKind = "correct") {
   if (!hasWindow() || !isSoundEnabled()) return;
   try {
     const AudioContextClass =
-      (window as any).AudioContext || (window as any).webkitAudioContext;
+      window.AudioContext ||
+      (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
     const osc = ctx.createOscillator();
@@ -80,4 +85,13 @@ export function playFeedbackTone(kind: FeedbackKind = "correct") {
   } catch {}
 }
 
-export default {};
+const studyAudio = {
+  isSoundEnabled,
+  setSoundEnabled,
+  isSpeechSynthesisSupported,
+  speakText,
+  stopSpeaking,
+  playFeedbackTone,
+};
+
+export default studyAudio;

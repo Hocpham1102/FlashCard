@@ -9,6 +9,11 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
     const body = await request.json();
     const { quality } = body;
@@ -20,10 +25,17 @@ export async function POST(
       );
     }
 
-    const card = await prisma.card.findUnique({ where: { id } });
+    const card = await prisma.card.findUnique({
+      where: { id },
+      include: { deck: true },
+    });
 
     if (!card) {
       return NextResponse.json({ error: "Card not found" }, { status: 404 });
+    }
+
+    if (card.deck?.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const result = sm2(
@@ -35,9 +47,7 @@ export async function POST(
       quality,
     );
 
-    // Get user session for tracking
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
+    const userId = session.user.id;
 
     const updatedCard = await prisma.card.update({
       where: { id },

@@ -14,8 +14,8 @@ function getItemClassname(pathname: string, href: string) {
     pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
 
   return isActive
-    ? "rounded-lg bg-white/20 px-3 py-1.5 text-sm font-semibold text-white"
-    : "rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-100 hover:bg-white/10 hover:text-white transition-colors";
+    ? "rounded-xl bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-600 border border-indigo-100 shadow-xs"
+    : "rounded-xl px-3.5 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors";
 }
 
 export function NavMenu() {
@@ -32,18 +32,22 @@ export function NavMenu() {
 
   if (status === "loading") {
     return (
-      <div className="hidden md:block h-8 w-64 rounded bg-indigo-500/50 animate-pulse" />
+      <div className="hidden md:block h-8 w-32 rounded-xl bg-slate-100 animate-pulse" />
     );
   }
 
   const items: NavItem[] = [];
+
+  if (session?.user) {
+    items.push({ label: "Dashboard", href: "/dashboard" });
+  }
 
   if (session?.user?.role === "ADMIN" || session?.user?.isAdmin) {
     items.push({ label: "Admin", href: "/admin" });
   }
 
   return (
-    <div className="hidden md:flex items-center gap-1">
+    <div className="hidden md:flex items-center gap-1.5">
       {items.map((item) => (
         <Link
           key={item.href}

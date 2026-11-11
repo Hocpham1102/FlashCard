@@ -11,8 +11,13 @@ interface Stats {
   currentStreak: number;
 }
 
+interface GamificationDetail {
+  leveledUp?: boolean;
+  newLevel?: number;
+}
+
 export function UserStatsDisplay() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [stats, setStats] = useState<Stats | null>(null);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [newLevel, setNewLevel] = useState(1);
@@ -31,10 +36,11 @@ export function UserStatsDisplay() {
     fetchStats();
 
     // Listen for custom event from Study/Quiz pages when XP is gained
-    const handleGamificationUpdate = (event: CustomEvent) => {
-      if (event.detail) {
-        const { leveledUp, newLevel, updatedStats } = event.detail;
-        if (leveledUp) {
+    const handleGamificationUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<GamificationDetail>;
+      if (customEvent.detail) {
+        const { leveledUp, newLevel } = customEvent.detail;
+        if (leveledUp && newLevel) {
           setNewLevel(newLevel);
           setShowLevelUp(true);
         }
@@ -44,8 +50,8 @@ export function UserStatsDisplay() {
       }
     };
 
-    window.addEventListener("gamificationUpdate" as any, handleGamificationUpdate);
-    return () => window.removeEventListener("gamificationUpdate" as any, handleGamificationUpdate);
+    window.addEventListener("gamificationUpdate", handleGamificationUpdate);
+    return () => window.removeEventListener("gamificationUpdate", handleGamificationUpdate);
   }, [status]);
 
   const fetchStats = async () => {
@@ -55,7 +61,7 @@ export function UserStatsDisplay() {
         const data = await res.json();
         setStats(data);
       }
-    } catch (e) {
+    } catch {
       // silent fail
     }
   };
@@ -64,21 +70,27 @@ export function UserStatsDisplay() {
 
   return (
     <>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-2.5">
         {/* Streak */}
-        <div className="flex items-center gap-1 bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full text-sm font-bold border border-orange-200" title="Chuỗi học tập">
-          <span>🔥</span>
+        <div 
+          className="flex items-center gap-1.5 bg-amber-50/90 text-amber-700 px-2.5 py-1 rounded-full text-xs sm:text-sm font-bold border border-amber-200/80 shadow-xs" 
+          title={`Chuỗi học tập: ${stats.currentStreak} ngày liên tiếp`}
+        >
+          <span className="text-sm">🔥</span>
           <span>{stats.currentStreak}</span>
         </div>
         
         {/* Level & XP */}
-        <div className="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100" title={`XP: ${stats.xp}`}>
-          <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-black">
+        <div 
+          className="flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/80 shadow-xs" 
+          title={`Cấp độ ${stats.level} (XP: ${stats.xp})`}
+        >
+          <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center text-[10px] font-black shadow-xs">
             {stats.level}
           </div>
-          <div className="hidden sm:block w-20 bg-indigo-200 rounded-full h-2 mr-1 overflow-hidden">
+          <div className="hidden sm:block w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
             <div 
-              className="bg-indigo-600 h-2 rounded-full transition-all duration-500 ease-out" 
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 h-1.5 rounded-full transition-all duration-500 ease-out" 
               style={{ width: `${stats.progress}%` }}
             />
           </div>

@@ -53,6 +53,49 @@ export default function QuizPlayPage() {
   const [timer, setTimer] = useState(15);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Track latest state for interval closures
+  const stateRef = useRef({ phase, currentIdx, questions });
+  useEffect(() => {
+    stateRef.current = { phase, currentIdx, questions };
+  });
+
+  const handleTimeout = useCallback(() => {
+    const { phase, currentIdx, questions } = stateRef.current;
+    if (phase !== "playing") return;
+    const q = questions[currentIdx];
+    const timeSpent = Date.now() - questionStartTime.current;
+
+    setIsCorrectAnswer(false);
+    setSelectedAnswer("(Hết giờ)");
+    playFeedbackTone("wrong");
+
+    setAnswers((prev) => [...prev, {
+      cardId: q.cardId,
+      userAnswer: "(Hết giờ)",
+      correctAnswer: q.correctAnswer,
+      isCorrect: false,
+      timeSpentMs: timeSpent,
+      question: q.question,
+    }]);
+    setPhase("answered");
+  }, []);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const initialTime = 30; // Tăng thời gian mặc định lên 30s cho tất cả các loại quiz
+    setTimer(initialTime);
+    timerRef.current = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          handleTimeout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [handleTimeout]);
+
   // Load quiz
   const loadQuiz = useCallback(async () => {
     setPhase("loading");
@@ -76,7 +119,7 @@ export default function QuizPlayPage() {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setPhase("error");
     }
-  }, [deckId, quizType, questionCount]);
+  }, [deckId, quizType, questionCount, startTimer]);
 
   useEffect(() => { loadQuiz(); }, [loadQuiz]);
   useEffect(() => { setSpeechSupported(isSpeechSynthesisSupported()); }, []);
@@ -94,49 +137,6 @@ export default function QuizPlayPage() {
   useEffect(() => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
-
-  // Track latest state for interval closures
-  const stateRef = useRef({ phase, currentIdx, questions });
-  useEffect(() => {
-    stateRef.current = { phase, currentIdx, questions };
-  });
-
-  function startTimer() {
-    if (timerRef.current) clearInterval(timerRef.current);
-    const initialTime = 30; // Tăng thời gian mặc định lên 30s cho tất cả các loại quiz
-    setTimer(initialTime);
-    timerRef.current = setInterval(() => {
-      setTimer((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          handleTimeout();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }
-
-  function handleTimeout() {
-    const { phase, currentIdx, questions } = stateRef.current;
-    if (phase !== "playing") return;
-    const q = questions[currentIdx];
-    const timeSpent = Date.now() - questionStartTime.current;
-
-    setIsCorrectAnswer(false);
-    setSelectedAnswer("(Hết giờ)");
-    playFeedbackTone("wrong");
-
-    setAnswers((prev) => [...prev, {
-      cardId: q.cardId,
-      userAnswer: "(Hết giờ)",
-      correctAnswer: q.correctAnswer,
-      isCorrect: false,
-      timeSpentMs: timeSpent,
-      question: q.question,
-    }]);
-    setPhase("answered");
-  }
 
   function handleSelectOption(optionText: string) {
     if (phase !== "playing") return;

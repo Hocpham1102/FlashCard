@@ -26,26 +26,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Quiz session not found" }, { status: 404 });
     }
 
-    // Save answers
+    if (quizSession.completedAt !== null) {
+      return NextResponse.json(
+        { error: "Quiz session already completed" },
+        { status: 400 },
+      );
+    }
+
+    // Fetch cards referenced in answers to perform genuine server-side grading
+    const cardIds = answers
+      .map((a: { cardId?: string }) => a.cardId)
+      .filter((id): id is string => typeof id === "string" && Boolean(id));
+
+    const cards = await prisma.card.findMany({
+      where: { id: { in: cardIds } },
+    });
+    const cardMap = new Map(cards.map((c) => [c.id, c]));
+
+    // Grade answers server-side against database records
     let correctCount = 0;
     let wrongCount = 0;
 
+    const isMeaningOrFill =
+      quizSession.quizType === "meaning_match" || quizSession.quizType === "fill_blank";
+
     const answerData = answers.map((a: {
       cardId: string;
-      userAnswer: string;
-      correctAnswer: string;
-      isCorrect: boolean;
+      selectedAnswer?: string;
+      userAnswer?: string;
       timeSpentMs?: number;
     }) => {
-      if (a.isCorrect) correctCount++;
+      const card = cardMap.get(a.cardId);
+      const submittedAnswer = ((a.selectedAnswer ?? a.userAnswer ?? "") as string).trim();
+      const expectedAnswer = card ? (isMeaningOrFill ? card.front : card.back) : "";
+
+      const isCorrect = Boolean(
+        card &&
+        submittedAnswer &&
+        submittedAnswer.toLowerCase() === expectedAnswer.trim().toLowerCase()
+      );
+
+      if (isCorrect) correctCount++;
       else wrongCount++;
 
       return {
         quizSessionId: sessionId,
         cardId: a.cardId,
-        userAnswer: a.userAnswer,
-        correctAnswer: a.correctAnswer,
-        isCorrect: a.isCorrect,
+        userAnswer: submittedAnswer,
+        correctAnswer: expectedAnswer,
+        isCorrect,
         timeSpentMs: a.timeSpentMs || 0,
       };
     });

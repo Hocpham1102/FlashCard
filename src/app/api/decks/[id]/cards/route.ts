@@ -1,4 +1,6 @@
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -7,6 +9,25 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+
+    const deck = await prisma.deck.findUnique({
+      where: { id },
+    });
+
+    if (!deck) {
+      return NextResponse.json({ error: "Deck not found" }, { status: 404 });
+    }
+
+    if (!deck.isPublic) {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (deck.userId !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const cards = await prisma.card.findMany({
       where: { deckId: id },
       orderBy: { createdAt: "desc" },
@@ -26,14 +47,32 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
+
+    const deck = await prisma.deck.findUnique({
+      where: { id },
+    });
+
+    if (!deck) {
+      return NextResponse.json({ error: "Deck not found" }, { status: 404 });
+    }
+
+    if (deck.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { front, back, phonetic, example, partOfSpeech, synonyms, antonyms, collocations, toeicPart, difficulty } = body;
 
-    if (!front || typeof front !== "string") {
+    if (!front || typeof front !== "string" || !front.trim()) {
       return NextResponse.json({ error: "Front is required" }, { status: 400 });
     }
-    if (!back || typeof back !== "string") {
+    if (!back || typeof back !== "string" || !back.trim()) {
       return NextResponse.json({ error: "Back is required" }, { status: 400 });
     }
 
@@ -41,8 +80,8 @@ export async function POST(
       prisma.card.create({
         data: {
           deckId: id,
-          front,
-          back,
+          front: front.trim(),
+          back: back.trim(),
           phonetic: phonetic || "",
           example: example || "",
           partOfSpeech: partOfSpeech || "",

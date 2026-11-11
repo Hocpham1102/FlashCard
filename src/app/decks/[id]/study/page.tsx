@@ -11,7 +11,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 interface Card {
-  _id: string;
+  id?: string;
+  _id?: string;
   front: string;
   back: string;
   phonetic: string;
@@ -28,7 +29,8 @@ interface Card {
 }
 
 interface Deck {
-  _id: string;
+  id?: string;
+  _id?: string;
   title: string;
   description?: string;
 }
@@ -126,7 +128,7 @@ export default function StudyPage() {
     try {
       const [deckRes, cardsRes] = await Promise.all([
         fetch(`/api/decks/${deckId}`),
-        fetch(`/api/decks/${deckId}/cards`),
+        fetch(`/api/decks/${deckId}/study`),
       ]);
 
       if (!deckRes.ok) throw new Error("Failed to load deck");
@@ -161,38 +163,10 @@ export default function StudyPage() {
     return () => { stopSpeaking(); };
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (isComplete || isLoading || isEmpty || cards.length === 0) return;
-
-      if (e.code === "Space" && !isSubmittingReview) {
-        e.preventDefault();
-        setIsFlipped((prev) => !prev);
-        return;
-      }
-
-      if (isFlipped && !isSubmittingReview) {
-        if (e.key === "1") handleRating(RATING_OPTIONS[0]);
-        if (e.key === "2") handleRating(RATING_OPTIONS[1]);
-        if (e.key === "3") handleRating(RATING_OPTIONS[2]);
-        if (e.key === "4") handleRating(RATING_OPTIONS[3]);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFlipped, isComplete, isLoading, isEmpty, cards.length, currentIndex, isSubmittingReview]);
-
-  function handleSpeakFront() {
-    if (cards.length === 0) return;
-    const card = cards[currentIndex];
-    speakText(card.front, { lang: "en-US", rate: 0.9, pitch: 1 });
-  }
-
-  async function handleRating(option: RatingOption) {
+  const handleRating = useCallback(async (option: RatingOption) => {
     if (isSubmittingReview) return;
     const card = cards[currentIndex];
+    const cardId = card.id || card._id;
 
     setIsSubmittingReview(true);
 
@@ -209,7 +183,7 @@ export default function StudyPage() {
 
     // Submit review to API
     try {
-      const res = await fetch(`/api/cards/${card._id}/review`, {
+      const res = await fetch(`/api/cards/${cardId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quality: option.quality }),
@@ -245,6 +219,35 @@ export default function StudyPage() {
       setReviewResult(null);
       setIsSubmittingReview(false);
     }, 800);
+  }, [cards, currentIndex, isSubmittingReview]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (isComplete || isLoading || isEmpty || cards.length === 0) return;
+
+      if (e.code === "Space" && !isSubmittingReview) {
+        e.preventDefault();
+        setIsFlipped((prev) => !prev);
+        return;
+      }
+
+      if (isFlipped && !isSubmittingReview) {
+        if (e.key === "1") handleRating(RATING_OPTIONS[0]);
+        if (e.key === "2") handleRating(RATING_OPTIONS[1]);
+        if (e.key === "3") handleRating(RATING_OPTIONS[2]);
+        if (e.key === "4") handleRating(RATING_OPTIONS[3]);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFlipped, isComplete, isLoading, isEmpty, cards.length, isSubmittingReview, handleRating]);
+
+  function handleSpeakFront() {
+    if (cards.length === 0) return;
+    const card = cards[currentIndex];
+    speakText(card.front, { lang: "en-US", rate: 0.9, pitch: 1 });
   }
 
   function handleStudyAgain() {
@@ -287,18 +290,32 @@ export default function StudyPage() {
   }
 
   if (isEmpty && deck) {
+    const deckUrl = `/decks/${deck.id || deck._id || deckId}`;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-12 max-w-md w-full text-center">
-          <div className="text-5xl mb-4">📚</div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Chưa có thẻ nào</h2>
-          <p className="text-slate-500 mb-8">Hãy thêm thẻ vào bộ này trước khi học!</p>
-          <Link
-            href={`/decks/${deck._id}`}
-            className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-xl transition-colors"
-          >
-            Quay lại bộ thẻ
-          </Link>
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 sm:p-12 max-w-md w-full text-center">
+          <div className="text-5xl mb-4">🎉</div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">All caught up!</h2>
+          <p className="text-slate-600 font-medium mb-1">
+            No cards due for review right now.
+          </p>
+          <p className="text-slate-400 text-sm mb-8">
+            Bạn đã hoàn thành tất cả các thẻ cần ôn tập trong bộ thẻ này. Hãy quay lại sau nhé!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href={deckUrl}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-xl transition-colors shadow-sm"
+            >
+              Quay lại bộ thẻ
+            </Link>
+            <Link
+              href="/dashboard"
+              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold py-2.5 px-6 rounded-xl transition-colors shadow-sm"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -307,6 +324,7 @@ export default function StudyPage() {
   if (isComplete && deck) {
     const totalCards = cards.length;
     const goodRate = totalCards > 0 ? Math.round(((stats.good + stats.easy) / totalCards) * 100) : 0;
+    const deckUrl = `/decks/${deck.id || deck._id || deckId}`;
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -351,7 +369,7 @@ export default function StudyPage() {
               Học lại
             </button>
             <Link
-              href={`/decks/${deck._id}`}
+              href={deckUrl}
               className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold py-2.5 px-6 rounded-xl transition-colors"
             >
               Quay lại bộ thẻ
@@ -383,7 +401,7 @@ export default function StudyPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Link
-                href={`/decks/${deck._id}`}
+                href={`/decks/${deck.id || deck._id || deckId}`}
                 className="w-8 h-8 flex flex-shrink-0 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
                 title="Thoát phiên học"
               >

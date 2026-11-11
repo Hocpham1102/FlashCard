@@ -1,0 +1,71 @@
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -56,8 +56,10 @@ model Card {
+   deck         Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+   reviews      CardReview[]
++  quizAnswers  QuizAnswer[]
+ 
+   @@index([deckId])
+   @@index([nextReview])
++  @@index([deckId, nextReview])
+ }
+ 
+ model CardReview {
+@@ -103,8 +105,10 @@ model QuizAnswer {
+   timeSpentMs   Int      @default(0)
+   createdAt     DateTime @default(now())
+   quizSession   QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
++  card          Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+ 
+   @@index([quizSessionId])
++  @@index([cardId])
+ }
+ 
+ model UserStats {
+@@ -170,12 +174,15 @@ model Account {
+   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@unique([provider, providerAccountId])
++  @@index([userId])
+ }
+ 
+ model Session {
+   id           String   @id @default(cuid())
+   sessionToken String   @unique
+   userId       String
+   expires      DateTime
+   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
++
++  @@index([userId])
+ }
+ 
+ model User {
+@@ -189,6 +196,8 @@ model User {
+   image          String?
+   role           UserRole        @default(USER)
++  createdAt      DateTime        @default(now())
++  updatedAt      DateTime        @updatedAt
+   accounts       Account[]
+   sessions       Session[]
+   decks          Deck[]
+--- a/src/app/api/admin/stats/route.ts
++++ b/src/app/api/admin/stats/route.ts
+@@ -31,14 +31,15 @@ export async function GET() {
+       prisma.user.count({ where: { role: "ADMIN" } }),
+       prisma.user.findMany({
+         take: 10,
+-        orderBy: { emailVerified: "desc" },
++        orderBy: { createdAt: "desc" },
+         select: {
+           id: true,
+           name: true,
+           username: true,
+           email: true,
+           role: true,
++          createdAt: true,
+           emailVerified: true,
+           _count: {
+             select: { decks: true },
+           },
+         },
+       }),

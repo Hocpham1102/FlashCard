@@ -1,6 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, GenerativeModel, Part } from "@google/generative-ai";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -74,16 +74,28 @@ function cleanJsonResponse(text: string): string {
   return s.trim();
 }
 
-async function generateContentWithRetry(model: any, parts: any[], retries = 2) {
+interface GeminiErrorLike {
+  status?: number;
+  response?: { status?: number };
+  message?: string;
+}
+
+function isGeminiError(err: unknown): err is GeminiErrorLike {
+  return typeof err === "object" && err !== null;
+}
+
+async function generateContentWithRetry(model: GenerativeModel, parts: Part[], retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       return await model.generateContent(parts);
-    } catch (error: any) {
-      const status = error?.status ?? error?.response?.status;
+    } catch (error: unknown) {
+      const err = isGeminiError(error) ? error : undefined;
+      const status = err?.status ?? err?.response?.status;
+      const message = err?.message || (error instanceof Error ? error.message : "");
       const isTransientGeminiError =
         status === 503 ||
-        String(error?.message || "").includes("503") ||
-        String(error?.message || "").includes("Service Unavailable");
+        message.includes("503") ||
+        message.includes("Service Unavailable");
 
       if (!isTransientGeminiError || attempt === retries) {
         throw error;
@@ -136,7 +148,7 @@ export async function POST(req: NextRequest) {
 
     // ─── Xây dựng parts cho Gemini ───────────────────────────────────
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    let parts: any[];
+    let parts: Part[];
 
     if (TEXT_EXTS.has(ext)) {
       // Đọc nội dung text và đưa vào prompt
@@ -289,11 +301,15 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI import error:", error);
+    const err = isGeminiError(error) ? error : undefined;
+    const message = err?.message || (error instanceof Error ? error.message : "");
+    const status = err?.status;
+
     if (
-      error?.message?.includes("API_KEY_INVALID") ||
-      error?.message?.includes("API key")
+      message.includes("API_KEY_INVALID") ||
+      message.includes("API key")
     ) {
       return NextResponse.json(
         { error: "API Key không hợp lệ. Kiểm tra GEMINI_API_KEY trong .env." },
@@ -301,9 +317,9 @@ export async function POST(req: NextRequest) {
       );
     }
     if (
-      error?.status === 503 ||
-      String(error?.message || "").includes("503") ||
-      String(error?.message || "").includes("Service Unavailable")
+      status === 503 ||
+      message.includes("503") ||
+      message.includes("Service Unavailable")
     ) {
       return NextResponse.json(
         {
@@ -313,14 +329,14 @@ export async function POST(req: NextRequest) {
         { status: 503 },
       );
     }
-    if (error?.message?.includes("quota") || error?.status === 429) {
+    if (message.includes("quota") || status === 429) {
       return NextResponse.json(
         { error: "Đã vượt quá giới hạn API. Vui lòng thử lại sau vài phút." },
         { status: 429 },
       );
     }
     return NextResponse.json(
-      { error: error?.message || "Có lỗi xảy ra khi phân tích file." },
+      { error: message || "Có lỗi xảy ra khi phân tích file." },
       { status: 500 },
     );
   }

@@ -49,20 +49,7 @@ export default function DashboardPage() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      setDecks([]);
-      setLoading(false);
-      router.replace("/login");
-      return;
-    }
-
-    if (status === "authenticated") {
-      fetchDecks();
-    }
-  }, [status, router]);
-
-  async function fetchDecks() {
+  const fetchDecks = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -85,7 +72,20 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      setDecks([]);
+      setLoading(false);
+      router.replace("/login");
+      return;
+    }
+
+    if (status === "authenticated") {
+      fetchDecks();
+    }
+  }, [status, router, fetchDecks]);
 
   async function handleCreateDeck(e: React.FormEvent) {
     e.preventDefault();
@@ -139,8 +139,8 @@ export default function DashboardPage() {
         setIsAIModalOpen(false);
         setAISuccess(null);
       }, 2500);
-    } catch (err: any) {
-      setAIError(err.message);
+    } catch (err: unknown) {
+      setAIError(err instanceof Error ? err.message : "Có lỗi xảy ra");
     } finally {
       setIsAIGenerating(false);
     }
@@ -214,8 +214,8 @@ export default function DashboardPage() {
         setImportTitle("");
         setImportSuccess(null);
       }, 2500);
-    } catch (err: any) {
-      setImportError(err.message);
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : "Có lỗi xảy ra");
     } finally {
       setIsImporting(false);
     }
@@ -273,9 +273,12 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <DashboardStats />
 
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-slate-800">Bộ thẻ của bạn</h2>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Bộ thẻ của bạn</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Quản lý và ôn tập các bộ flashcard của bạn</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             {/* AI Generate Button */}
             <button
               onClick={() => {
