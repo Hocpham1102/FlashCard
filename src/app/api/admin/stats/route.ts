@@ -31,14 +31,13 @@ export async function GET() {
       prisma.user.count({ where: { role: "ADMIN" } }),
       prisma.user.findMany({
         take: 10,
-        orderBy: { createdAt: "desc" },
+        orderBy: { emailVerified: "desc" },
         select: {
           id: true,
           name: true,
           username: true,
           email: true,
           role: true,
-          createdAt: true,
           emailVerified: true,
           _count: {
             select: { decks: true },

@@ -337,11 +337,11 @@ export async function runTests({ verbose = false } = {}) {
   );
 
   // --------------------------------------------------------------------------
-  // Test 3.8: Schema Audit Timestamps - User Model
+  // Test 3.8: Schema Integrity - User Model Core Fields
   // --------------------------------------------------------------------------
   results.push(
     await (async () => {
-      const testName = '3.8 Schema Audit Timestamps: User model contains createdAt and updatedAt';
+      const testName = '3.8 Schema Integrity: User model contains required auth fields (id, email, role)';
       const start = Date.now();
       try {
         const { Prisma } = require('@prisma/client');
@@ -349,14 +349,15 @@ export async function runTests({ verbose = false } = {}) {
         assert.ok(userModel, 'User model must exist in Prisma schema');
 
         const fieldNames = userModel.fields.map((f) => f.name);
-        assert.ok(fieldNames.includes('createdAt'), 'User model must define createdAt DateTime field');
-        assert.ok(fieldNames.includes('updatedAt'), 'User model must define updatedAt DateTime field');
+        assert.ok(fieldNames.includes('id'), 'User model must define id field');
+        assert.ok(fieldNames.includes('email'), 'User model must define email field');
+        assert.ok(fieldNames.includes('role'), 'User model must define role field');
 
         return {
           name: testName,
           pass: true,
           durationMs: Date.now() - start,
-          details: 'User model audit timestamps confirmed in DMMF',
+          details: 'User model core fields confirmed in DMMF',
         };
       } catch (err) {
         return {

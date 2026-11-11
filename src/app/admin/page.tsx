@@ -15,7 +15,7 @@ interface DashboardStats {
     username: string | null;
     email: string | null;
     role: string;
-    createdAt: string;
+    createdAt?: string;
     _count: { decks: number };
   }[];
   recentDecks: {
